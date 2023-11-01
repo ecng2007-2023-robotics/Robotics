@@ -1,3 +1,4 @@
+#include <StackArray.h>
 #include "Ticker.h"
 #include <EEPROM.h>
 
@@ -23,12 +24,14 @@ uint8_t cmd_queue_index_r = 0;
 uint8_t cmd_queue_index_w = 0;
 char command_queue[BUFSIZE][MAX_CMD_SIZE];
 static int serial_count;
-#define parameter_num_max 6          //最大参数数量
-String parameter[parameter_num_max]; //参数值
+#define parameter_num_max 6          
+String parameter[parameter_num_max]; 
 float get_time = 0;
 static millis_t get_time_delay;
 int line_tracking_threshold = 150;
 double voltage;
+
+String path;
 
 class L293
 {
@@ -139,6 +142,23 @@ public:
     delay(10);
   }
 
+  String shortPath()
+  {
+    int n=path.length();
+
+    if(n<=3)
+    {
+      path.replace("LBL","S");
+      path.replace("LBR","B");
+      path.replace("LBS","R");
+      path.replace("RBL","B");
+      path.replace("SBL","R");
+      path.replace("SBS","B");
+      return shortPath();
+    }
+    return path;
+  }
+
 private:
 } l293;
 
@@ -181,29 +201,10 @@ void lineTrackingMode()
     delay(80);
   }
 
-  //Left T turn
-   if (is_ir_recevie && is_left_line_tracking && !is_right_line_tracking) 
-  {
-    l293.leftFront(tSpeed);
-    l293.rightFront(tSpeed);
-    delay(300);
-    l293.leftStop();
-    l293.rightStop();
-    delay(500);
-    l293.leftBack(tSpeed);
-    l293.rightFront(tSpeed);
-    delay(390);
-    l293.leftStop();
-    l293.rightStop();
-    delay(500);
-    l293.leftFront(tSpeed);
-    l293.rightFront(tSpeed);
-    delay(100);
-  }
-
   //U-turn
   if (!is_ir_recevie) 
    {
+    path+='B';
      l293.leftStop();
      l293.rightStop();
      delay(500);
@@ -227,6 +228,7 @@ void lineTrackingMode()
   //T turn
     if (is_ir_recevie && is_left_line_tracking && is_right_line_tracking) 
   {
+    path+='L';
     l293.leftFront(tSpeed);
     l293.rightFront(tSpeed);
     delay(200);
@@ -247,26 +249,7 @@ void lineTrackingMode()
   //Cross
   if (is_ir_recevie && !is_left_line_tracking && !is_right_line_tracking) 
   {
-    l293.leftFront(tSpeed);
-    l293.rightFront(tSpeed);
-    delay(200);
-    l293.leftStop();
-    l293.rightStop();
-    delay(500);
-    l293.leftBack(tSpeed);
-    l293.rightFront(tSpeed);
-    delay(400);
-    l293.leftStop();
-    l293.rightStop();
-    delay(500);
-    l293.leftFront(tSpeed);
-    l293.rightFront(tSpeed);
-    delay(100);
-  }
-
-  //Left Turn
-  if (!is_ir_recevie && !is_left_line_tracking && is_right_line_tracking) 
-  {
+    path+='L';
     l293.leftFront(tSpeed);
     l293.rightFront(tSpeed);
     delay(200);
@@ -287,6 +270,7 @@ void lineTrackingMode()
   //Right turn
   if (!is_ir_recevie && is_left_line_tracking && !is_right_line_tracking) 
   {
+    path+='R';
     l293.leftFront(tSpeed);
     l293.rightFront(tSpeed);
     delay(200);
@@ -307,6 +291,7 @@ void lineTrackingMode()
   //Right T
   if (is_ir_recevie && is_left_line_tracking && !is_right_line_tracking) 
   {
+    path+='S';
     l293.leftFront(tSpeed);
     l293.rightFront(tSpeed);
     delay(200);
@@ -318,9 +303,10 @@ void lineTrackingMode()
     delay(100);
   }
 
-  //Left T
+  //Left T && left turn
   if (is_ir_recevie && !is_left_line_tracking && is_right_line_tracking) 
   {
+    path+='L';
     l293.leftFront(tSpeed);
     l293.rightFront(tSpeed);
     delay(200);
@@ -337,6 +323,216 @@ void lineTrackingMode()
     l293.rightFront(tSpeed);
     delay(100);
   }
+
+  //Stop
+  if (!is_ir_recevie && !is_left_line_tracking && is_right_line_tracking) 
+  {
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.shortPath();
+    int s=200;
+
+    for(int i=0;i<path.length();i++)
+    {
+      if(path[i]=='L')
+      {
+        l293.left(s);
+      }
+      else if(path[i]=='R')
+      {
+        l293.right(s);
+      }
+      else
+      {
+        l293.forward(s);
+      }
+    }
+  }
+
+}
+
+void tremaux()
+{
+   l293.car_speed = map(voltage * 10, 3.6 * 10, 4.2 * 10, 150, 100);//200 150
+  int tSpeed=170;
+  StackArray<char> tPath, mPath;
+
+  //Forward
+  if (is_ir_recevie)
+  {
+    l293.forward(l293.car_speed-30);
+    delay(80);
+  }
+
+  //Left T
+  if (is_ir_recevie && !is_left_line_tracking && is_right_line_tracking) 
+  {
+    tPath.push("L");
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(200);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftBack(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(400);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(100);
+  }
+
+//Right T
+  if (is_ir_recevie && is_left_line_tracking && !is_right_line_tracking) 
+  {
+    tPath.push("R");
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(200);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(100);
+  }
+
+  //Right turn
+  if (!is_ir_recevie && is_left_line_tracking && !is_right_line_tracking) 
+  {
+    tPath.push("A");
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(200);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftBack(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(400);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(100);
+  }
+
+  //Cross
+  if (is_ir_recevie && !is_left_line_tracking && !is_right_line_tracking) 
+  {
+    tPath.push("C");
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(200);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftBack(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(400);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(100);
+  }
+
+  //T turn
+    if (is_ir_recevie && is_left_line_tracking && is_right_line_tracking) 
+  {
+    tPath.push("T");
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(200);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftBack(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(400);
+    l293.leftStop();
+    l293.rightStop();
+    delay(500);
+    l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(100);
+  }
+
+  //U-turn
+  if (!is_ir_recevie) 
+   {
+    int s=200;
+     l293.leftStop();
+     l293.rightStop();
+     delay(500);
+     l293.leftBack(tSpeed);
+     l293.rightBack(tSpeed);
+     delay(400);
+     l293.leftStop();
+     l293.rightStop();
+     delay(500);
+     l293.leftBack(tSpeed);
+     l293.rightFront(tSpeed);
+     delay(700);
+     l293.leftStop();
+     l293.rightStop();
+     delay(500);
+     l293.leftFront(tSpeed);
+    l293.rightFront(tSpeed);
+    delay(130);
+
+    
+    while(!tPath.isEmpty()&& (is_ir_recevie || is_left_line_tracking || is_right_line_tracking))
+    {
+      int pop=tPath.pop();
+      if(pop=="R")
+      {
+        if(is_left_line_tracking&&is_right_line_tracking)
+        {
+          l293.right(s);
+          mPath.push("S");
+        }
+        else
+        {
+          l293.left(s);
+          mPath.push("A");
+        }
+      }
+      else if(pop=="L")
+      {
+        if(is_left_line_tracking&&is_right_line_tracking)
+        {
+          l293.left(s);
+          mPath.push("S");
+        }
+        else
+        {
+          l293.right(s);
+          mPath.push("B");
+        }
+      }
+      else if (pop=="S")
+      {
+        if(is_left_line_tracking)
+        {
+          l293.right(s);
+          mPath.push("L");
+        }
+        else if (is_right_line_tracking)
+        {
+          l293.left(s);
+          mPath.push("R");
+        }
+      }
+  }
+  }
+
 }
 
 void setup()
