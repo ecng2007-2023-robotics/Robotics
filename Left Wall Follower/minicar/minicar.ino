@@ -1,24 +1,30 @@
 #include "Ticker.h"
 #include <EEPROM.h>
 
+//type for storing millisecond values
 typedef unsigned long Millis_t;
 
+//instances of the ticker library created for the various tasks
 Ticker lineTracking;
 Ticker keyMode;
 Ticker irReceive;
 Ticker voltageMeasure;
 
+//Address for storing line tracking threshold
 int addrLineTrackingThreshold = 0;
 
+//Variable to store the key value
 int keyValue = 0;
 
-bool farLeft = false;
+//Variables that store line tracking information for the sensors
+bool farLeft = false; //additional decision-making sensor 
 bool isLeftLineTracking = false;
 bool isRightLineTracking = false;
-bool farRight = false;
+bool farRight = false; //additional sensor
 bool isIrReceive = false;
 bool middle = false;
 
+//Defining constants for the command queue
 #define MAX_CMD_SIZE 96
 #define BUFSIZE 4
 uint8_t commandsInQueue = 0;
@@ -33,11 +39,13 @@ static Millis_t getTimeDelay;
 int lineTrackingThreshold = 300;
 double voltage;
 
-String path;
+String path; //Variable to store the robot's path
 
+//Class for controlling the L239 motor driver
 class L293
 {
 public:
+//pin assignments for the motor driver
   int left1Pin = 7;
   int left2Pin = 8;
   int right1Pin = 12;
@@ -49,6 +57,7 @@ public:
   uint16_t leftSpeed = 0;
   uint16_t rightSpeed = 0;
 
+//enum for different run states of the robot
   enum RunStatus
   {
     STOP,
@@ -58,6 +67,7 @@ public:
     RIGHT
   } runStatus = STOP;
 
+//Methods to control the left motor
   void leftFront(int leftSpeed)
   {
     analogWrite(enableLeftPin, leftSpeed);
@@ -79,6 +89,7 @@ public:
     digitalWrite(left2Pin, LOW);
   }
 
+//Methods to control the right motor
   void rightFront(int rightSpeed)
   {
     analogWrite(enableRightPin, rightSpeed);
@@ -100,6 +111,7 @@ public:
     digitalWrite(right2Pin, LOW);
   }
 
+//Methods to control the robot's movement
   void forward(int speed)
   {
     leftFront(speed);
@@ -133,6 +145,7 @@ public:
     rightBack(speed);
   }
 
+//Stop function keeps the speed at 0
   void stop()
   {
     runStatus = STOP;
@@ -144,12 +157,14 @@ public:
     rightStop();
   }
 
+//Optimization algorithm, method to shorten the recorded path
   String shortPath()
   {
     int n = path.length();
 
     if (n <= 3)
     {
+      //where L-Left, B- Back, R-Right, S-Straight
       path.replace("LBL", "S");
       path.replace("LBR", "B");
       path.replace("LBS", "R");
@@ -164,12 +179,14 @@ public:
 private:
 } l293;
 
+//Function to get line tracking data
 bool getLineTrackingData()
 {
   static int lineTrackingLeftData;
   static int lineTrackingRightData;
   static int irReceiveData;
 
+  //Initializes and reads the middle sensor
   pinMode(6, OUTPUT);
   digitalWrite(6, HIGH);
   delay(1);
@@ -179,6 +196,7 @@ bool getLineTrackingData()
 
   byte midIr = digitalRead(6);
 
+  //Reads line tracking and Infared (ir) recieve sensors -(manufacturer code)
   lineTrackingLeftData = analogRead(A1);
   lineTrackingRightData = analogRead(A0);
   irReceiveData = analogRead(A2);
@@ -188,6 +206,7 @@ bool getLineTrackingData()
   return (midIr);
 }
 
+//Function to get data from the left sensor
 bool getLeft()
 {
   pinMode(A5, OUTPUT);
@@ -202,6 +221,7 @@ bool getLeft()
   return (leftIr);
 }
 
+//function to get data fron the right sensor
 bool getRight()
 {
   pinMode(9, OUTPUT);
@@ -216,6 +236,7 @@ bool getRight()
   return (rightIr);
 }
 
+//function to get data from the middle back sensor
 bool getBack()
 {
   pinMode(A4, OUTPUT);
@@ -230,12 +251,13 @@ bool getBack()
   return (backIr);
 }
 
+//Initialization function for line tracking
 void lineTrackingInit()
 {
   pinMode(A1, INPUT);
   pinMode(A0, INPUT);
   int t = 0;
-  EEPROM.get(addrLineTrackingThreshold, t);
+  EEPROM.get(addrLineTrackingThreshold, t); //Reads line tracking threshold from EEPROM value declared at the start of code
   if (t != -1)
   {
     lineTrackingThreshold = t;
@@ -243,8 +265,10 @@ void lineTrackingInit()
   lineTracking.start(getLineTrackingData, 20);
 }
 
+//Function to control the robot based on line tracking and infrared data
 void lineTrackingMode(bool front, bool left, bool right, bool back)
 {
+  //Prints debugging information (manufacturer code)
   Serial.print(left);
   Serial.print("\t");
   Serial.print(isLeftLineTracking);
@@ -260,12 +284,15 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
   Serial.print(right);
   Serial.print("\n");
 
+  //maps voltage to the car speed
   l293.carSpeed = map(voltage * 10, 3.6 * 10, 4.2 * 10, 200, 150);
+  //constants for movement calculations
   int tSpeed = 170;
   int x = 590, y = 275;
   int fo = 350;
   int lF = 200;
 
+  //Robot movement logic based on sensor data
   if (front == 0 && isLeftLineTracking)
   {
     l293.leftBack(180);
@@ -284,7 +311,7 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(80);
   }
 
-  // U
+  // U-Turn
   if (!isIrReceive)
   {
     path += "B";
@@ -322,7 +349,7 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(y);
   }
 
-  // T
+  // T-Turn
   if (left == 1 && front == 0 && back == 1 && right == 1)
   {
     path += "L";
@@ -374,6 +401,8 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(1000);
     path = l293.shortPath();
     int s = 200;
+
+    //Excecutes the recorded path
     for (int i = 0; i < path.length(); i++)
     {
       if (path[i] == "L")
@@ -392,24 +421,34 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
   }
 }
 
+//Initializes the robot
 void setup()
 {
+  //Initializes serial communication and prints a message
   Serial.begin(9600);
   Serial.println("Testing OTI Sensor");
+  //Generates a tone as a signal
   tone(4, 4000, 500);
   delay(500);
+  //Initializes line tracking parameters
   lineTrackingInit();
 }
 
 void loop()
 {
+  //Variables to store sensor data
   bool f, r, l, b;
+
+  //Updates Ticker tasks
   lineTracking.update();
   keyMode.update();
   irReceive.update();
+
+  //Gets sensor data
   f = getLineTrackingData();
   l = getLeft();
   r = getRight();
   b = getBack();
+//Performs line tracking mode logic
   lineTrackingMode(f, l, r, b);
 }
