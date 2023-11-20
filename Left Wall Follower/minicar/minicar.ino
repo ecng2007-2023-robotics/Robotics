@@ -196,7 +196,7 @@ bool getLineTrackingData()
 
   byte midIr = digitalRead(6);
 
-  //Reads line tracking and Infared (ir) recieve sensors -(manufacturer code)
+  //Reads line tracking and Infared (ir) receive sensors -(manufacturer code)
   lineTrackingLeftData = analogRead(A1);
   lineTrackingRightData = analogRead(A0);
   irReceiveData = analogRead(A2);
@@ -221,7 +221,7 @@ bool getLeft()
   return (leftIr);
 }
 
-//function to get data fron the right sensor
+//Function to get data from the right sensor
 bool getRight()
 {
   pinMode(9, OUTPUT);
@@ -236,7 +236,7 @@ bool getRight()
   return (rightIr);
 }
 
-//function to get data from the middle back sensor
+//Function to get data from the middle back sensor
 bool getBack()
 {
   pinMode(A4, OUTPUT);
@@ -292,7 +292,7 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
   int fo = 350;
   int lF = 200;
 
-  //Robot movement logic based on sensor data
+  //Robot line tracking movement logic based on sensor data
   if (front == 0 && isLeftLineTracking)
   {
     l293.leftBack(180);
@@ -434,6 +434,7 @@ void setup()
   lineTrackingInit();
 }
 
+//loops initialize repeatedly in arduino unlike C++
 void loop()
 {
   //Variables to store sensor data
