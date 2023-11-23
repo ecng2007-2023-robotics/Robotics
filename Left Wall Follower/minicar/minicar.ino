@@ -292,29 +292,57 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
   int fo = 350;
   int lF = 200;
 
-  //Robot line tracking movement logic based on sensor data
-  if (front == 0 && isLeftLineTracking)
+  //Line follower for track alignment
+ if(left==1&&is_left_line_tracking==1&&front==0&&back==0&&is_right_line_tracking==0&&right==0)
+ {
+   l293.stop();
+    delay(1000);
+ }
+  //if the robot comes off the track completely, then it will move until line is found
+  if (front ==0&& is_left_line_tracking==0 && is_right_line_tracking==0&&back==0)
   {
+    l293.stop();
     l293.leftBack(180);
     l293.rightFront(170);
-  }
-  if (front == 0 && isRightLineTracking)
-  {
+    delay(200);
     l293.leftFront(180);
     l293.rightBack(170);
+    delay(200);
   }
-  // Forward
-  if (isLeftLineTracking == 0 && back == 1 && isRightLineTracking == 0)
+  if (is_left_line_tracking)
   {
-    l293.leftFront(180);
-    l293.rightFront(170);
-    delay(80);
+    l293.leftBack(150);
+    l293.rightFront(130);
+  }
+  if (is_right_line_tracking)
+  {
+    l293.leftFront(150);
+    l293.rightBack(130);
   }
 
-  // U-Turn
-  if (!isIrReceive)
+//alignment for when the robot oversteers
+  if ((left==1||is_left_line_tracking)&&front==0&&back==0)
   {
-    path += "B";
+    l293.leftBack(150);
+    l293.rightFront(140);
+  }
+if ((right==1||is_right_line_tracking)&&front==0&&back==0)
+  {
+    l293.leftFront(150);
+    l293.rightBack(140);
+  }
+  
+  //Forward condition
+  if(is_left_line_tracking==0&&back==1&&front==1&&is_right_line_tracking==0)
+  {
+    l293.leftFront(140);
+    l293.rightFront(130);
+    delay(100);
+  }
+  
+  //Deadend condition
+  if (!is_ir_recevie) 
+  {
     l293.stop();
     delay(1000);
     l293.leftBack(220);
@@ -325,10 +353,9 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(x);
   }
 
-  // Left-T
-  if (left == 1 && front == 1 && back == 1 && right == 0)
+  //Left-T condition
+  if(left==1&&front==1&&back==1&&right==0)
   {
-    path += "L";
     l293.leftFront(lF);
     l293.rightFront(180);
     delay(fo);
@@ -337,10 +364,9 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(y);
   }
 
-  // Cross
-  if (left == 1 && front == 1 && back == 1 && right == 1)
+  //Cross condition
+  if(left==1&&front==1&&back==1&&right==1)
   {
-    path += "L";
     l293.leftFront(lF);
     l293.rightFront(180);
     delay(fo);
@@ -349,10 +375,9 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(y);
   }
 
-  // T-Turn
-  if (left == 1 && front == 0 && back == 1 && right == 1)
+  //T condition
+  if(left==1&&front==0&&back==1&&right==1)
   {
-    path += "L";
     l293.leftFront(lF);
     l293.rightFront(180);
     delay(fo);
@@ -361,44 +386,45 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     delay(y);
   }
 
-  // Right-T
-  if (left == 0 && front == 1 && back == 1 && right == 1)
+  //Right-T condition
+  if(left==0&&front==1&&back==1&&right==1&&back==1)
   {
-    path += "S";
     l293.leftFront(170);
     l293.rightFront(170);
     delay(80);
   }
-
-  // Right
-  if (left == 0 && front == 0 && back == 1 && right == 1)
+  
+  //Right condition
+  if(left==0&&front==0&&back==1&&right==1)
   {
-    path += "R";
-    l293.leftFront(170);
-    l293.rightFront(170);
-    delay(410);
+    l293.leftFront(lF);
+    l293.rightFront(180);
+    delay(fo);
     l293.leftFront(230);
     l293.rightBack(170);
-    delay(500);
+    delay(460);
   }
 
-  // Left
-  if (left == 1 && front == 0 && back == 1 && right == 0)
+  //Left condition
+  if(left==1&&front==0&&back==1&&right==0)
   {
-    path += "L";
-    l293.leftFront(170);
-    l293.rightFront(170);
-    delay(410);
-    l293.rightFront(170);
+    l293.leftFront(lF);
+    l293.rightFront(180);
+    delay(fo);
     l293.leftBack(230);
-    delay(500);
+    l293.rightFront(170);
+    delay(y);
   }
+  
+  
 
   // Stop
   if (left == 0 && isLeftLineTracking == 0 && front == 0 && back == 0 && isRightLineTracking == 0 && right == 0)
   {
     l293.stop();
     delay(1000);
+    //optimized path conditions, requires further testing
+    /*
     path = l293.shortPath();
     int s = 200;
 
@@ -416,7 +442,7 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
       else if (path[i] == "S")
       {
         l293.forward(s);
-      }
+      }*/
     }
   }
 }
