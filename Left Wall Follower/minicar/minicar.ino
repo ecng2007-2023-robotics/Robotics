@@ -293,13 +293,13 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
   int lF = 200;
 
   //Line follower for track alignment
- if(left==1&&is_left_line_tracking==1&&front==0&&back==0&&is_right_line_tracking==0&&right==0)
+ if(left==1 && isLeftLineTracking==1 && front==0 && back==0 && isRightLineTracking==0 && right==0)
  {
    l293.stop();
     delay(1000);
  }
   //if the robot comes off the track completely, then it will move until line is found
-  if (front ==0&& is_left_line_tracking==0 && is_right_line_tracking==0&&back==0)
+  if (front ==0&& isLeftLineTracking==0 && isRightLineTracking==0&&back==0)
   {
     l293.stop();
     l293.leftBack(180);
@@ -309,31 +309,31 @@ void lineTrackingMode(bool front, bool left, bool right, bool back)
     l293.rightBack(170);
     delay(200);
   }
-  if (is_left_line_tracking)
+  if (isLeftLineTracking)
   {
     l293.leftBack(150);
     l293.rightFront(130);
   }
-  if (is_right_line_tracking)
+  if (isRightLineTracking)
   {
     l293.leftFront(150);
     l293.rightBack(130);
   }
 
 //alignment for when the robot oversteers
-  if ((left==1||is_left_line_tracking)&&front==0&&back==0)
+  if ((left==1||isLeftLineTracking)&&front==0&&back==0)
   {
     l293.leftBack(150);
     l293.rightFront(140);
   }
-if ((right==1||is_right_line_tracking)&&front==0&&back==0)
+if ((right==1||isRightLineTracking)&&front==0&&back==0)
   {
     l293.leftFront(150);
     l293.rightBack(140);
   }
   
   //Forward condition
-  if(is_left_line_tracking==0&&back==1&&front==1&&is_right_line_tracking==0)
+  if(isLeftLineTracking==0&&back==1&&front==1&&isRightLineTracking==0)
   {
     l293.leftFront(140);
     l293.rightFront(130);
@@ -341,7 +341,7 @@ if ((right==1||is_right_line_tracking)&&front==0&&back==0)
   }
   
   //Deadend condition
-  if (!is_ir_recevie) 
+  if (!isIrReceive) 
   {
     l293.stop();
     delay(1000);
